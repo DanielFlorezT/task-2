@@ -9,7 +9,7 @@ setwd("~/Dropbox/teaching/Taller de R/uniandes_2020_2/Task/task-2 answer oficial
 getwd()
 
 #### Librerias
-paquetes = c('tidyverse','haven')
+paquetes = c('tidyverse','sf')
 sapply(paquetes,require,character.only=T) 
 
 #### Crear un vector con los nombres de los archivos
@@ -65,11 +65,13 @@ geih = readRDS(file = 'data/procesada/GEIH 2019.rds') %>%
 geih = mutate(geih , fex_c_2011 = as.character(fex_c_2011) %>% gsub(',','.',.) %>% as.numeric()) %>% 
        mutate(peso = fex_c_2011/12)
 
+# Calcular tasa
 t_falbeta = geih %>% group_by(dpto,p6160) %>% summarise(n_p = sum(peso)) %>%
             reshape2::dcast(.,dpto~p6160)
 colnames(t_falbeta) = c('dpto','sabe_le','no_sabe_le') 
 t_falbeta = mutate(t_falbeta , tasa = no_sabe_le/(no_sabe_le+sabe_le)*100)
 
+# Pintar histograma
 t_falbeta %>%
   mutate(name = fct_reorder(as.character(dpto), tasa)) %>%
   ggplot( aes(x=as.character(dpto), y=tasa)) +
@@ -78,3 +80,11 @@ t_falbeta %>%
   xlab("") +
   theme_bw()
 
+# Pintar mapa
+mapa = st_read(dsn = 'data/orignal/MGN_DPTO_POLITICO.shp')
+str(mapa)
+str(t_falbeta)
+mapa = mutate(mapa, dpto = as.numeric(as.character(DPTO_CCDGO)))# Crear variable dpto 
+mapa = merge(mapa,t_falbeta,'dpto',all.x=T)# pegar variable a pintar
+
+ggplot() + geom_sf(data = mapa,aes(fill=tasa),col='red')
